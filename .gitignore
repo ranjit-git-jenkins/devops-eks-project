@@ -1,0 +1,32 @@
+# Python
+app/venv/
+app/__pycache__/
+app/.pytest_cache/
+*.pyc
+*.pyo
+
+# Terraform
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform/terraform.tfvars
+.terraform.lock.hcl
+
+# Credentials / Keys
+*.pem
+*.key
+*.p12
+*.jks
+*.kubeconfig
+
+# Ansible
+*.retry
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

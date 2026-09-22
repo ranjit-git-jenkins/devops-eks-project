@@ -1,0 +1,17 @@
+.git
+.gitignore
+
+app/venv/
+app/__pycache__/
+app/.pytest_cache/
+*.pyc
+*.pyo
+
+terraform/
+ansible/
+kubernetes/
+monitoring/
+scripts/
+
+*.tfstate
+*.tfstate.*
