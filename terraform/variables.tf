@@ -68,3 +68,8 @@ variable "github_webhook_cidrs" {
   type        = list(string)
   default     = []
 }
+variable "jenkins_ami_id" {
+  description = "Pinned AMI ID for Jenkins EC2 instance"
+  type        = string
+  default     = "ami-0c0fd09cfe77b59dc"
+}

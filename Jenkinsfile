@@ -176,7 +176,8 @@ pipeline {
 
                     echo "===== Building Docker Image ====="
 
-                    docker build \
+                    docker buildx build \
+                      --load \
                       -f docker/Dockerfile \
                       -t ${IMAGE_URI} \
                       .

@@ -1,27 +1,3 @@
-data "aws_ami" "ubuntu_jenkins" {
-  most_recent = true
-
-  owners = ["099720109477"]
-
-  filter {
-    name = "name"
-    values = [
-      "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
-    ]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
-}
-
-
 resource "aws_key_pair" "jenkins" {
   key_name = "${var.project_name}-${var.environment}-jenkins-key"
 
@@ -194,7 +170,7 @@ resource "aws_eks_access_policy_association" "jenkins" {
 
 
 resource "aws_instance" "jenkins" {
-  ami           = data.aws_ami.ubuntu_jenkins.id
+  ami           = var.jenkins_ami_id
   instance_type = var.jenkins_instance_type
 
   subnet_id = aws_subnet.public_1.id
