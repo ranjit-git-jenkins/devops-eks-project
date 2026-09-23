@@ -1,0 +1,9 @@
+---
+jenkins_port: 8080
+aws_region: ap-south-1
+eks_cluster_name: devops-eks-dev-cluster
+
+kubectl_version: "v1.36.4"
+
+jenkins_repo_key_url: "https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key"
+jenkins_repo_url: "https://pkg.jenkins.io/debian-stable"

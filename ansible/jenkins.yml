@@ -1,0 +1,7 @@
+---
+- name: Configure Jenkins CI/CD server
+  hosts: jenkins
+  become: true
+
+  roles:
+    - jenkins

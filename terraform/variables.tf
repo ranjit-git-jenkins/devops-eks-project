@@ -45,3 +45,20 @@ variable "private_subnet_2_cidr" {
   type        = string
   default     = "10.0.12.0/24"
 }
+
+variable "jenkins_instance_type" {
+  description = "EC2 instance type for Jenkins"
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "jenkins_admin_cidr" {
+  description = "CIDR allowed to access Jenkins SSH and Web UI"
+  type        = string
+}
+
+variable "jenkins_public_key_path" {
+  description = "Local SSH public key path for Jenkins EC2"
+  type        = string
+  default     = "~/.ssh/devops-jenkins.pub"
+}

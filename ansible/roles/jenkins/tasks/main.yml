@@ -1,0 +1,175 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - acl
+      - ca-certificates
+      - curl
+      - wget
+      - unzip
+      - gnupg
+      - git
+      - jq
+      - python3
+      - python3-pip
+      - python3-venv
+      - fontconfig
+      - openjdk-21-jre
+      - docker.io
+    state: present
+
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+
+- name: Download Jenkins repository signing key
+  ansible.builtin.get_url:
+    url: "{{ jenkins_repo_key_url }}"
+    dest: /etc/apt/keyrings/jenkins-keyring.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+
+- name: Configure Jenkins LTS repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/jenkins.list
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] {{ jenkins_repo_url }} binary/
+
+
+- name: Update apt cache after adding Jenkins repository
+  ansible.builtin.apt:
+    update_cache: true
+
+
+- name: Install Jenkins
+  ansible.builtin.apt:
+    name: jenkins
+    state: present
+
+
+- name: Ensure Docker service is enabled and running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+
+- name: Add Jenkins user to Docker group
+  ansible.builtin.user:
+    name: jenkins
+    groups: docker
+    append: true
+  notify: Restart Jenkins
+
+
+- name: Add Ubuntu user to Docker group
+  ansible.builtin.user:
+    name: ubuntu
+    groups: docker
+    append: true
+
+
+- name: Download AWS CLI v2
+  ansible.builtin.get_url:
+    url: "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+    dest: /tmp/awscliv2.zip
+    mode: "0644"
+
+
+- name: Extract AWS CLI installer
+  ansible.builtin.unarchive:
+    src: /tmp/awscliv2.zip
+    dest: /tmp
+    remote_src: true
+    creates: /tmp/aws/install
+
+
+- name: Install AWS CLI v2
+  ansible.builtin.command:
+    cmd: /tmp/aws/install
+    creates: /usr/local/bin/aws
+
+
+- name: Download kubectl
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    owner: root
+    group: root
+    mode: "0755"
+
+
+- name: Create Jenkins AWS directory
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.aws
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+
+
+- name: Create Jenkins kube directory
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.kube
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+
+- name: Create Ansible temporary directory for Jenkins user
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.ansible/tmp
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+
+- name: Generate EKS kubeconfig for Jenkins
+  ansible.builtin.command:
+    cmd: >
+      aws eks update-kubeconfig
+      --region {{ aws_region }}
+      --name {{ eks_cluster_name }}
+      --kubeconfig /var/lib/jenkins/.kube/config
+  become: true
+  become_user: jenkins
+  environment:
+    HOME: /var/lib/jenkins
+    AWS_DEFAULT_REGION: "{{ aws_region }}"
+  changed_when: true
+
+
+- name: Ensure kubeconfig ownership is correct
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.kube/config
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+
+
+- name: Ensure Jenkins service is enabled and started
+  ansible.builtin.systemd:
+    name: jenkins
+    state: started
+    enabled: true
+
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
