@@ -695,3 +695,216 @@ Docker image cleanup            : PASS
 
 
 
+
+
+
+---
+
+## Task 3 - ECR and Docker Cleanup & Hardening
+
+### Status
+
+**COMPLETE**
+
+### Objective
+
+The objective of this task was to harden the Amazon ECR and Jenkins Docker build workflow, implement automated image cleanup, remove persistent Docker credentials, enable Docker Buildx/BuildKit, and validate the complete CI/CD deployment flow.
+
+### 1. ECR Repository Audit
+
+The existing Amazon ECR repository was reviewed.
+
+Repository:
+
+`devops-eks-app`
+
+Validated configuration:
+
+- Image scanning on push: Enabled
+- Encryption: AES256
+- Image tags generated dynamically by Jenkins
+- Existing repository contained both tagged and untagged images
+
+### 2. ECR Lifecycle Policy
+
+An ECR lifecycle policy was added and managed through Terraform.
+
+File:
+
+`terraform/ecr.tf`
+
+Lifecycle rules:
+
+- Untagged images older than 7 days are expired automatically.
+- Only the latest 30 images are retained.
+
+This prevents unnecessary accumulation of old CI/CD images in ECR.
+
+Validation command:
+
+`aws ecr get-lifecycle-policy --repository-name devops-eks-app --region ap-south-1`
+
+The lifecycle policy was successfully verified in AWS.
+
+### 3. Terraform Jenkins AMI Safety
+
+During the initial Terraform validation, Terraform attempted to replace the existing Jenkins EC2 instance because the Jenkins AMI was selected using a `most_recent` Ubuntu AMI data source.
+
+The existing Jenkins instance was using:
+
+`ami-0c0fd09cfe77b59dc`
+
+A newer Ubuntu AMI caused Terraform to detect a replacement.
+
+To prevent an unexpected Jenkins server replacement, the Jenkins AMI was pinned using the Terraform variable:
+
+`jenkins_ami_id`
+
+The Jenkins EC2 resource now references:
+
+`ami = var.jenkins_ami_id`
+
+Final Terraform validation result:
+
+`No changes. Your infrastructure matches the configuration.`
+
+No Jenkins replacement or infrastructure destruction was required.
+
+### 4. Docker Credential Cleanup
+
+A persistent Docker configuration was found on the Jenkins server:
+
+`/var/lib/jenkins/.docker/config.json`
+
+The file contained an authentication entry for the Amazon ECR registry.
+
+The hardened Jenkins pipeline already uses a temporary workspace-level Docker configuration during ECR authentication and removes it during pipeline cleanup.
+
+Therefore, the old permanent Docker credential file was removed.
+
+A search under `/var/lib/jenkins` confirmed that no persistent `config.json` credential file remained.
+
+### 5. Docker Buildx Installation
+
+Docker Buildx was added to the Jenkins Ansible role:
+
+`ansible/roles/jenkins/tasks/main.yml`
+
+Package:
+
+`docker-buildx`
+
+The Jenkins Ansible playbook completed successfully with:
+
+- unreachable=0
+- failed=0
+
+Installed Buildx version:
+
+`0.30.1`
+
+BuildKit version:
+
+`v0.26.2`
+
+The default Docker builder was confirmed to be running.
+
+### 6. Buildx Smoke Test
+
+A temporary Alpine Docker image was built using:
+
+`docker buildx build --load`
+
+The image was successfully loaded into the local Docker image store, inspected, and removed.
+
+Result:
+
+`BUILDX SMOKE TEST PASSED`
+
+This confirmed that Buildx and BuildKit were functioning correctly on the Jenkins server.
+
+### 7. Jenkins Pipeline Docker Build Hardening
+
+The Jenkins pipeline was migrated from the legacy Docker build command:
+
+`docker build`
+
+to:
+
+`docker buildx build --load`
+
+The `--load` option is required because the following pipeline stage pushes the locally built image to Amazon ECR.
+
+Updated flow:
+
+GitHub Push
+→ Jenkins Webhook
+→ Checkout
+→ Unit Tests
+→ Dynamic Image Tag
+→ Docker Buildx / BuildKit Build
+→ ECR Login
+→ ECR Push
+→ EKS Deployment
+→ Rollout Verification
+→ Health Check
+→ Readiness Check
+→ Cleanup
+
+### 8. Git Commit
+
+The Task 3 hardening changes were committed as:
+
+`6fede60 Harden ECR lifecycle and Jenkins Docker builds`
+
+The commit included:
+
+- Jenkinsfile Buildx migration
+- Ansible Buildx package configuration
+- ECR lifecycle policy
+- Jenkins AMI pinning
+- Terraform variable updates
+
+### 9. End-to-End Deployment Validation
+
+After pushing the changes to GitHub, the CI/CD pipeline built and deployed a new image:
+
+`743610859738.dkr.ecr.ap-south-1.amazonaws.com/devops-eks-app:9-6fede60`
+
+Kubernetes deployment status:
+
+- Desired replicas: 2
+- Ready replicas: 2
+- Available replicas: 2
+- Pods: Running
+- HPA minimum replicas: 2
+- HPA maximum replicas: 10
+- CPU target: 60%
+- Observed CPU during validation: 1%
+
+Application endpoint validation:
+
+`/health` → `{"status":"healthy"}`
+
+`/ready` → `{"status":"ready"}`
+
+### Final Result
+
+Task 3 ECR and Docker Cleanup & Hardening was successfully completed.
+
+The project now includes:
+
+- Automated ECR image lifecycle management
+- ECR image scanning on push
+- Encrypted ECR storage
+- Dynamic immutable-style CI build tags
+- No persistent ECR Docker authentication file on Jenkins
+- Docker Buildx and BuildKit based builds
+- Ansible-managed Buildx installation
+- Jenkins AMI pinning to prevent accidental EC2 replacement
+- Verified Terraform state consistency
+- Successful EKS deployment
+- Successful health and readiness validation
+
+
+
