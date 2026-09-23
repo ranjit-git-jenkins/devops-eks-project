@@ -31,7 +31,7 @@ Amazon EKS
    v
 Prometheus + Grafana + Alertmanager
 
-Technologies Used
+## Technologies Used
 
 AWS
 Amazon EKS
@@ -62,7 +62,7 @@ The application is containerized using Docker and runs with Gunicorn.
 
 Prometheus multiprocess support is configured for Gunicorn workers.
 
-Terraform
+## Terraform
 
 Terraform provisions:
 
@@ -80,7 +80,7 @@ EKS access entry
 
 Terraform state is stored remotely in Amazon S3.
 
-Kubernetes
+## Kubernetes
 
 The application is deployed to Amazon EKS using:
 
@@ -97,7 +97,8 @@ The HPA scales the application between:
 Minimum Pods: 2
 Maximum Pods: 10
 CPU Target:   60%
-Jenkins
+
+## Jenkins
 
 Jenkins runs on a dedicated EC2 instance.
 
@@ -112,7 +113,7 @@ Git
 
 Jenkins uses an EC2 IAM instance role instead of static AWS credentials.
 
-AWS IAM Security
+## AWS IAM Security
 Jenkins authenticates to AWS using:
 
 EC2
@@ -129,7 +130,7 @@ Jenkins has namespace-scoped access to the Kubernetes devops-app namespace.
 
 Cluster-wide access is intentionally restricted.
 
-Monitoring
+## Monitoring
 Monitoring is implemented using the kube-prometheus-stack.
 
 Components include:
@@ -142,7 +143,7 @@ Node Exporter
 
 Custom application metrics are collected using a Kubernetes ServiceMonitor.
 
-Grafana Dashboard
+## Grafana Dashboard
 The dashboard monitors:
 
 Application request rate
@@ -152,7 +153,7 @@ Pod CPU usage
 Pod memory usage
 Total application requests
 
-Prometheus Alerts
+## Prometheus Alerts
 Configured alerts include:
 
 Application Down
@@ -161,7 +162,8 @@ Low Replica Count
 
 Alerts are routed to Alertmanager.
 
-CI/CD Flow
+## CI/CD Flow
+
 GitHub
    |
    v
@@ -185,7 +187,10 @@ EKS Rolling Update
    v
 Application Verification
 
-Repository Structure
+## Repository Structure
+
+'''text
+
 devops-eks-project/
 ├── ansible/
 ├── app/
@@ -196,8 +201,10 @@ devops-eks-project/
 ├── terraform/
 ├── .gitignore
 └── README.md
+'''
 
-Security Practices
+## Security Practices
+
 AWS credentials are not stored in the repository
 Terraform state files are excluded from Git
 Terraform variable files are excluded from Git
@@ -208,7 +215,6 @@ Jenkins Kubernetes access is namespace scoped
 Jenkins SSH and Web UI access are restricted using security groups
 
 
-Author
+## Author
 Ranjit Kumar Shrivastava
 
-```bash
