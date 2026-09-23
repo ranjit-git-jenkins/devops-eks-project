@@ -19,13 +19,6 @@ pipeline {
         CONTAINER_NAME  = 'devops-eks-app'
         SERVICE_NAME    = 'devops-eks-app'
 
-        AWS_ACCOUNT_ID      = ''
-        ECR_REGISTRY        = ''
-        IMAGE_TAG           = ''
-        IMAGE_URI           = ''
-        PREVIOUS_IMAGE      = ''
-        DEPLOY_REQUIRED     = 'true'
-        DEPLOYMENT_ATTEMPTED = 'false'
     }
 
     stages {
