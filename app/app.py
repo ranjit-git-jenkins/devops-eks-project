@@ -1,5 +1,13 @@
-from flask import Flask, jsonify
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+import os
+
+from flask import Flask, jsonify, Response
+from prometheus_client import (
+    Counter,
+    CollectorRegistry,
+    multiprocess,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+)
 
 app = Flask(__name__)
 
@@ -23,27 +31,32 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify({
-        "status": "healthy"
-    }), 200
+    return jsonify({"status": "healthy"}), 200
 
 
 @app.route("/ready")
 def ready():
-    return jsonify({
-        "status": "ready"
-    }), 200
+    return jsonify({"status": "ready"}), 200
 
 
 @app.route("/metrics")
 def metrics():
-    return generate_latest(), 200, {
-        "Content-Type": CONTENT_TYPE_LATEST
-    }
+    multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+
+    if multiproc_dir and os.path.isdir(multiproc_dir):
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        metrics_data = generate_latest(registry)
+    else:
+        # Local development / pytest mode
+        metrics_data = generate_latest()
+
+    return Response(
+        metrics_data,
+        status=200,
+        content_type=CONTENT_TYPE_LATEST
+    )
 
 
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=5000
-    )
+    app.run(host="0.0.0.0", port=5000)

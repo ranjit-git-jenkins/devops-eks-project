@@ -1,0 +1,72 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: devops-eks-app-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: devops-eks-app.rules
+
+      rules:
+        - alert: DevOpsAppDown
+          expr: |
+            min(up{service="devops-eks-app"}) == 0
+            or
+            absent(up{service="devops-eks-app"})
+          for: 1m
+
+          labels:
+            severity: critical
+            application: devops-eks-app
+
+          annotations:
+            summary: "DevOps EKS application is down"
+            description: "One or more application scrape targets are unavailable for more than 1 minute."
+
+        - alert: DevOpsAppHighCPU
+          expr: |
+            (
+              sum(
+                rate(container_cpu_usage_seconds_total{
+                  namespace="devops-app",
+                  container="devops-eks-app"
+                }[2m])
+              )
+              /
+              sum(
+                kube_pod_container_resource_requests{
+                  namespace="devops-app",
+                  container="devops-eks-app",
+                  resource="cpu",
+                  unit="core"
+                }
+              )
+            ) * 100 > 80
+          for: 2m
+
+          labels:
+            severity: warning
+            application: devops-eks-app
+
+          annotations:
+            summary: "High CPU utilization on DevOps EKS application"
+            description: "Application CPU utilization has remained above 80 percent of requested CPU for more than 2 minutes."
+
+        - alert: DevOpsAppLowReplicas
+          expr: |
+            kube_deployment_status_replicas_available{
+              namespace="devops-app",
+              deployment="devops-eks-app"
+            } < 2
+          for: 1m
+
+          labels:
+            severity: critical
+            application: devops-eks-app
+
+          annotations:
+            summary: "Insufficient DevOps application replicas"
+            description: "Available application replicas have remained below 2 for more than 1 minute."

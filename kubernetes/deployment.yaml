@@ -27,7 +27,7 @@ spec:
       containers:
         - name: devops-eks-app
 
-          image: 743610859738.dkr.ecr.ap-south-1.amazonaws.com/devops-eks-app:v1
+          image: 743610859738.dkr.ecr.ap-south-1.amazonaws.com/devops-eks-app:v2
 
           imagePullPolicy: IfNotPresent
 
