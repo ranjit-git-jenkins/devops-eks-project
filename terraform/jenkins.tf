@@ -50,6 +50,20 @@ resource "aws_security_group" "jenkins" {
       var.jenkins_admin_cidr
     ]
   }
+  dynamic "ingress" {
+    for_each = var.github_webhook_cidrs
+
+    content {
+      description = "GitHub webhook access to Jenkins"
+      from_port   = 8080
+      to_port     = 8080
+      protocol    = "tcp"
+
+      cidr_blocks = [
+        ingress.value
+      ]
+    }
+  }
 
   ingress {
     description = "Jenkins Web UI from administrator"

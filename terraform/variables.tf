@@ -62,3 +62,9 @@ variable "jenkins_public_key_path" {
   type        = string
   default     = "~/.ssh/devops-jenkins.pub"
 }
+
+variable "github_webhook_cidrs" {
+  description = "GitHub IPv4 CIDRs allowed to deliver Jenkins webhooks"
+  type        = list(string)
+  default     = []
+}
