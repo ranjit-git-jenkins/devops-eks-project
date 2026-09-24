@@ -63,13 +63,13 @@ output "eks_node_role_arn" {
 }
 
 output "jenkins_public_ip" {
-  description = "Public IPv4 address of Jenkins server"
-  value       = aws_instance.jenkins.public_ip
+  description = "Elastic public IPv4 address of Jenkins server"
+  value       = aws_eip.jenkins.public_ip
 }
 
 output "jenkins_public_dns" {
-  description = "Public DNS name of Jenkins server"
-  value       = aws_instance.jenkins.public_dns
+  description = "Public DNS name associated with Jenkins Elastic IP"
+  value       = aws_eip.jenkins.public_dns
 }
 
 output "jenkins_instance_id" {

@@ -73,3 +73,7 @@ variable "jenkins_ami_id" {
   type        = string
   default     = "ami-0c0fd09cfe77b59dc"
 }
+variable "eks_public_access_cidrs" {
+  description = "CIDR blocks allowed to access the EKS public API endpoint"
+  type        = list(string)
+}

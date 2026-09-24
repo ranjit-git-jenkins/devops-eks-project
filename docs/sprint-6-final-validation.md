@@ -908,3 +908,324 @@ The project now includes:
 
 
 
+
+
+---
+
+## Task 4 - Terraform Final Validation & Infrastructure Hardening
+
+### Objective
+
+Validate the final Terraform-managed AWS infrastructure, identify and recover infrastructure drift safely, and apply additional security hardening without replacing existing production resources.
+
+### 1. Terraform Backend and State Validation
+
+The Terraform remote backend was revalidated successfully.
+
+Backend configuration:
+
+- Amazon S3 remote backend
+- State locking enabled through S3 lockfile
+- Server-side encryption enabled
+- S3 bucket versioning enabled
+- Public access blocked
+- Terraform initialization completed successfully
+- Terraform configuration validation passed
+
+Validation commands included:
+
+`terraform init`
+
+`terraform fmt -check -recursive`
+
+`terraform validate`
+
+The remote Terraform state object was confirmed to exist and use server-side AES256 encryption.
+
+### 2. Infrastructure Drift Detection
+
+A full Terraform plan detected infrastructure changes that had occurred outside Terraform.
+
+The following drift was identified:
+
+- NAT Gateway had been deleted
+- NAT Gateway Elastic IP had been deleted
+- Private route table default route was pointing to the deleted NAT Gateway and was in blackhole state
+- Jenkins EC2 instance was stopped
+- Jenkins public IP had changed after the EC2 stop/start lifecycle
+
+The initial full Terraform plan also showed a possible Jenkins EC2 replacement.
+
+The full plan was intentionally not applied because replacing the existing Jenkins server would have risked losing the configured CI/CD environment.
+
+### 3. NAT Gateway Recovery
+
+The NAT infrastructure was recovered using a controlled targeted Terraform operation.
+
+The targeted recovery included:
+
+- NAT Elastic IP creation
+- NAT Gateway creation
+- Private route table repair
+
+Recovery plan result:
+
+`2 to add, 1 to change, 0 to destroy`
+
+After the recovery:
+
+- NAT Gateway status: Available
+- Private default route status: Active
+- Private EKS nodes regained outbound connectivity
+- No Jenkins or EKS resources were destroyed
+
+The targeted Terraform operation was used only as an exceptional recovery procedure.
+
+### 4. EKS Node Group Validation
+
+After NAT recovery, the EKS managed node group was validated.
+
+Node group state:
+
+- Status: ACTIVE
+- Capacity type: ON_DEMAND
+- Instance type: t3.medium
+- Minimum nodes: 1
+- Desired nodes: 2
+- Maximum nodes: 3
+- Health issues: None
+
+Two EC2 worker instances were confirmed:
+
+- InService
+- Healthy
+
+Kubernetes validation confirmed:
+
+- 2 worker nodes Ready
+- No unhealthy cluster pods
+- Application deployment 2/2 available
+- HPA operating normally
+
+### 5. Application Validation
+
+The application remained healthy after infrastructure recovery.
+
+Application deployment:
+
+- Ready replicas: 2
+- Available replicas: 2
+- HPA minimum replicas: 2
+- HPA maximum replicas: 10
+- CPU target: 60%
+
+Application endpoint validation:
+
+`/health` → `{"status":"healthy"}`
+
+`/ready` → `{"status":"ready"}`
+
+This confirmed that the infrastructure recovery did not impact application availability.
+
+### 6. Jenkins EC2 Preservation
+
+The existing Jenkins EC2 instance was started and validated instead of being recreated.
+
+The instance retained:
+
+- Same EC2 instance ID
+- Same private IP
+- Existing Jenkins configuration
+- Existing Docker installation
+- Existing Buildx installation
+- Existing IAM instance profile
+
+After the instance was running, a fresh Terraform plan no longer requested Jenkins replacement.
+
+This prevented unnecessary recreation of the CI/CD server.
+
+### 7. Jenkins Elastic IP Hardening
+
+A Terraform-managed Elastic IP was added to provide Jenkins with a stable public address.
+
+Terraform resources added:
+
+`aws_eip.jenkins`
+
+`aws_eip_association.jenkins`
+
+The existing Jenkins EC2 instance was preserved.
+
+Terraform apply result:
+
+`2 added, 0 changed, 0 destroyed`
+
+Terraform outputs were updated to use the Jenkins Elastic IP and its associated public DNS name.
+
+Benefits:
+
+- Jenkins public IP remains stable after EC2 stop/start operations
+- Ansible inventory no longer needs repeated public IP updates
+- GitHub webhook URL remains stable
+- Existing Jenkins server is preserved
+
+### 8. Jenkins Security Group Validation
+
+The Jenkins security group was reviewed and validated.
+
+Inbound access:
+
+- SSH TCP/22 restricted to the trusted administrator /32 CIDR
+- Jenkins TCP/8080 restricted to the trusted administrator /32 CIDR
+- GitHub webhook access allowed only from configured GitHub webhook CIDR ranges
+
+Outbound access remains enabled for required package repositories, AWS APIs, ECR, EKS, and other external dependencies.
+
+The previous administrator IP drift was corrected through Terraform.
+
+Jenkins external access was validated successfully:
+
+`HTTP/1.1 200 OK`
+
+### 9. Jenkins Service Validation
+
+Jenkins was validated internally using AWS Systems Manager and externally using the Elastic IP.
+
+Verified:
+
+- SSM Agent: Online
+- Jenkins service: Active
+- Docker service: Active
+- Jenkins TCP/8080: Listening
+- Jenkins local login endpoint: HTTP 200
+- Jenkins external login endpoint: HTTP 200
+- Docker Buildx: Available
+
+Ansible connectivity using the permanent Jenkins Elastic IP also succeeded:
+
+`ping: pong`
+
+### 10. EC2 Metadata Security
+
+The Jenkins EC2 Instance Metadata Service configuration was audited.
+
+Validated settings:
+
+- Metadata endpoint: enabled
+- IMDSv2 token requirement: required
+- HTTP PUT response hop limit: 2
+- Metadata configuration state: applied
+
+This confirms that IMDSv2 is enforced for the Jenkins EC2 instance.
+
+### 11. EKS API Endpoint Hardening
+
+The EKS API endpoint originally allowed public access from:
+
+`0.0.0.0/0`
+
+A dedicated Terraform variable was added:
+
+`eks_public_access_cidrs`
+
+The EKS public API endpoint was restricted to the trusted administrator /32 CIDR.
+
+Final endpoint configuration:
+
+- Public endpoint: Enabled
+- Private endpoint: Enabled
+- Public access: Restricted to trusted administrator CIDR
+
+Terraform updated the EKS cluster in place.
+
+Plan result:
+
+`0 to add, 1 to change, 0 to destroy`
+
+No EKS node group or application resources were recreated.
+
+### 12. Jenkins to EKS Private Access Validation
+
+After EKS public endpoint hardening, Jenkins-to-EKS access was tested.
+
+Jenkins successfully executed:
+
+`kubectl auth can-i get pods -n devops-app`
+
+Result:
+
+`yes`
+
+Jenkins also successfully listed the application pods in the `devops-app` namespace.
+
+This confirms that Jenkins can continue accessing EKS through the VPC/private endpoint while external public API access remains restricted.
+
+### 13. Stable GitHub Webhook Validation
+
+The GitHub webhook was updated to use the permanent Jenkins Elastic IP.
+
+Webhook endpoint:
+
+`http://<JENKINS_EIP>:8080/github-webhook/`
+
+A GitHub webhook redelivery was performed after the update.
+
+Validation result:
+
+- Event: push
+- Request method: POST
+- Response: HTTP 200
+- Delivery: Successful
+
+This confirms that GitHub can successfully trigger Jenkins through the new permanent endpoint.
+
+### 14. Terraform Reproducibility
+
+A new example Terraform variable file was added:
+
+`terraform/terraform.tfvars.example`
+
+The example file documents the required Terraform variables without committing the real local administrator IP or local SSH key path.
+
+The real:
+
+`terraform/terraform.tfvars`
+
+remains ignored by Git.
+
+Validation:
+
+- `terraform fmt -check -recursive` passed
+- `terraform validate` passed
+- `git diff --check` passed
+
+### 15. Final Terraform Drift Validation
+
+After completing the recovery and hardening work, a final full Terraform plan was executed.
+
+Final result:
+
+`No changes. Your infrastructure matches the configuration.`
+
+This confirms that the Terraform configuration, Terraform remote state, and deployed AWS infrastructure are synchronized.
+
+### Final Result
+
+Task 4 Terraform Final Validation & Infrastructure Hardening was successfully completed.
+
+The environment now includes:
+
+- Validated encrypted remote Terraform state
+- S3 versioning and public access protection
+- Recovered NAT Gateway connectivity
+- Healthy private EKS worker nodes
+- Stable Terraform-managed Jenkins Elastic IP
+- Restricted Jenkins administrative access
+- IMDSv2 enforcement
+- Restricted EKS public API endpoint
+- Enabled EKS private API endpoint
+- Verified Jenkins-to-EKS private connectivity
+- Stable GitHub-to-Jenkins webhook integration
+- Reproducible Terraform example variables
+- Successful application health and readiness checks
+- Final Terraform state with zero infrastructure drift

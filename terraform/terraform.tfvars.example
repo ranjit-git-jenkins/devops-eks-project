@@ -1,0 +1,60 @@
+# =========================================================
+# AWS / Project
+# =========================================================
+
+aws_region   = "ap-south-1"
+project_name = "devops-eks"
+environment  = "dev"
+
+
+# =========================================================
+# VPC
+# =========================================================
+
+vpc_cidr = "10.0.0.0/16"
+
+public_subnet_1_cidr = "10.0.1.0/24"
+public_subnet_2_cidr = "10.0.2.0/24"
+
+private_subnet_1_cidr = "10.0.11.0/24"
+private_subnet_2_cidr = "10.0.12.0/24"
+
+
+# =========================================================
+# Jenkins
+# =========================================================
+
+jenkins_instance_type = "t3.medium"
+
+# Replace with the public IPv4 address from which you administer Jenkins.
+# Example: 203.0.113.10/32
+jenkins_admin_cidr = "YOUR_PUBLIC_IP/32"
+
+# Replace with the path to your Jenkins SSH public key.
+jenkins_public_key_path = "/home/YOUR_USER/.ssh/id_ed25519.pub"
+
+# Ubuntu AMI used for the Jenkins EC2 instance.
+jenkins_ami_id = "ami-0c0fd09cfe77b59dc"
+
+
+# =========================================================
+# GitHub Webhook Access
+# =========================================================
+
+github_webhook_cidrs = [
+  "192.30.252.0/22",
+  "185.199.108.0/22",
+  "140.82.112.0/20",
+  "143.55.64.0/20"
+]
+
+
+# =========================================================
+# EKS API Access
+# =========================================================
+
+# Restrict the public EKS API endpoint to trusted administrator CIDRs.
+# Replace with your current public IPv4 address.
+eks_public_access_cidrs = [
+  "YOUR_PUBLIC_IP/32"
+]

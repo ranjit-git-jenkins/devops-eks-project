@@ -218,3 +218,16 @@ resource "aws_vpc_security_group_ingress_rule" "eks_api_from_jenkins" {
 
   description = "Allow Jenkins server to access EKS private API endpoint"
 }
+
+resource "aws_eip" "jenkins" {
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-jenkins-eip"
+  }
+}
+
+resource "aws_eip_association" "jenkins" {
+  instance_id   = aws_instance.jenkins.id
+  allocation_id = aws_eip.jenkins.id
+}
